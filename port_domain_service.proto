@@ -1,0 +1,22 @@
+syntax = "proto3";
+option go_package = "github.com/qbart/go-grpc/pb";
+
+message PortRequest {
+    string id = 1;
+    string name = 2;
+    string city = 3;
+    string country = 4;
+    repeated string alias = 5;
+    repeated string regions = 6;
+    repeated double coordinates = 7;
+    string province = 8;
+    string timezone = 9;
+    repeated string unlocs = 10;
+}
+
+message PortResponse {}
+
+service PortDomainService {
+  rpc Upsert(PortRequest) returns (PortResponse) {}
+}
+

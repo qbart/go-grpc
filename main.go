@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -14,12 +13,20 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/qbart/go-grpc/models"
+	"github.com/qbart/go-grpc/pb"
 	"github.com/qbart/go-grpc/storage"
+	"google.golang.org/grpc"
 )
 
 func main() {
-	ctx := context.Background()
 	db := storage.New()
+
+	conn, err := grpc.Dial("0.0.0.0:3001", grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("Failed to connect to grpc %v", err)
+	}
+	defer conn.Close()
+	client := pb.NewPortDomainServiceClient(conn)
 
 	go func() {
 		f, err := os.Open("ports.json")
@@ -30,7 +37,31 @@ func main() {
 
 		ports := NewPortsReader(f)
 		for port := range ports {
-			db.Upsert(port)
+			_, err := client.Upsert(context.Background(), &pb.PortRequest{
+				Id:          "port.ID" + port.ID,
+				Name:        "port.Name",
+				City:        "port.City",
+				Country:     "port.Country",
+				Alias:       []string{"aa"},
+				Regions:     []string{"aa"},
+				Coordinates: []float64{1, 2},
+				Province:    "port.Province",
+				Timezone:    "port.Timezone",
+				Unlocs:      []string{"aa"},
+				// Id:          port.ID,
+				// Name:        port.Name,
+				// City:        port.City,
+				// Country:     port.Country,
+				// Alias:       port.Alias,
+				// Regions:     port.Regions,
+				// Coordinates: port.Coordinates[:],
+				// Province:    port.Province,
+				// Timezone:    port.Timezone,
+				// Unlocs:      port.Unlocs,
+			})
+			if err != nil {
+				log.Fatalf("Upserting port failed: %v", err)
+			}
 		}
 	}()
 
@@ -56,7 +87,7 @@ func main() {
 	<-c
 
 	log.Println("Shutting down...")
-	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	srv.Shutdown(ctx)
@@ -66,17 +97,25 @@ type HttpHandler = func(w http.ResponseWriter, r *http.Request)
 
 func PortHandler(db storage.DB) HttpHandler {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
 		params := mux.Vars(r)
 		port, err := db.Get(params["id"])
+
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(w, "Error: %v", err)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": err.Error(),
+			})
 			return
 		}
 
-		err = json.NewEncoder(w).Encode(port)
-		if err != nil {
-			// TODO
+		if err = json.NewEncoder(w).Encode(port); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": err.Error(),
+			})
+			return
 		}
 	}
 }
