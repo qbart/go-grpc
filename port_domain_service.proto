@@ -12,6 +12,7 @@ message Port {
     string province = 8;
     string timezone = 9;
     repeated string unlocs = 10;
+    string code = 11;
 }
 
 message UpsertResponse {}

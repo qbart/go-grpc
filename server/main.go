@@ -6,7 +6,7 @@ import (
 	"net"
 
 	"github.com/qbart/go-grpc/pb"
-	"github.com/qbart/go-grpc/storage"
+	"github.com/qbart/go-grpc/server/storage"
 	"google.golang.org/grpc"
 )
 
