@@ -1,10 +1,12 @@
 package storage
 
 import (
-	"github.com/qbart/go-grpc/models"
+	"context"
+
+	"github.com/qbart/go-grpc/pb"
 )
 
 type DB interface {
-	Upsert(port *models.Port) error
-	Get(id string) (*models.Port, error)
+	Upsert(ctx context.Context, port *pb.Port) error
+	Get(ctx context.Context, id string) (*pb.Port, error)
 }

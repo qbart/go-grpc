@@ -1,3 +1,3 @@
 package models
 
-type Coordinates = [2]float64
+type Coordinates = []float64

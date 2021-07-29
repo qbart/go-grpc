@@ -12,21 +12,17 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/qbart/go-grpc/models"
 	"github.com/qbart/go-grpc/pb"
-	"github.com/qbart/go-grpc/storage"
 	"google.golang.org/grpc"
 )
 
 func main() {
-	db := storage.New()
-
 	conn, err := grpc.Dial("0.0.0.0:3001", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("Failed to connect to grpc %v", err)
 	}
 	defer conn.Close()
-	client := pb.NewPortDomainServiceClient(conn)
+	portDomainService := pb.NewPortDomainServiceClient(conn)
 
 	go func() {
 		f, err := os.Open("ports.json")
@@ -37,36 +33,15 @@ func main() {
 
 		ports := NewPortsReader(f)
 		for port := range ports {
-			_, err := client.Upsert(context.Background(), &pb.PortRequest{
-				Id:          "port.ID" + port.ID,
-				Name:        "port.Name",
-				City:        "port.City",
-				Country:     "port.Country",
-				Alias:       []string{"aa"},
-				Regions:     []string{"aa"},
-				Coordinates: []float64{1, 2},
-				Province:    "port.Province",
-				Timezone:    "port.Timezone",
-				Unlocs:      []string{"aa"},
-				// Id:          port.ID,
-				// Name:        port.Name,
-				// City:        port.City,
-				// Country:     port.Country,
-				// Alias:       port.Alias,
-				// Regions:     port.Regions,
-				// Coordinates: port.Coordinates[:],
-				// Province:    port.Province,
-				// Timezone:    port.Timezone,
-				// Unlocs:      port.Unlocs,
-			})
+			_, err := portDomainService.Upsert(context.Background(), port)
 			if err != nil {
-				log.Fatalf("Upserting port failed: %v", err)
+				log.Fatalf("Upserting port %v failed: %v", port, err)
 			}
 		}
 	}()
 
 	r := mux.NewRouter()
-	r.HandleFunc("/ports/{id:[A-Z]+}", PortHandler(db)).Methods("GET")
+	r.HandleFunc("/ports/{id:[A-Z]+}", PortHandler(portDomainService)).Methods("GET")
 
 	srv := &http.Server{
 		Addr:         "0.0.0.0:3000",
@@ -93,14 +68,12 @@ func main() {
 	srv.Shutdown(ctx)
 }
 
-type HttpHandler = func(w http.ResponseWriter, r *http.Request)
-
-func PortHandler(db storage.DB) HttpHandler {
+func PortHandler(portDomainService pb.PortDomainServiceClient) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-
 		params := mux.Vars(r)
-		port, err := db.Get(params["id"])
+
+		port, err := portDomainService.Get(context.Background(), &pb.PortId{Id: params["id"]})
 
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
@@ -120,8 +93,8 @@ func PortHandler(db storage.DB) HttpHandler {
 	}
 }
 
-func NewPortsReader(r io.Reader) <-chan *models.Port {
-	ch := make(chan *models.Port)
+func NewPortsReader(r io.Reader) <-chan *pb.Port {
+	ch := make(chan *pb.Port)
 
 	go func(r io.Reader) {
 		defer close(ch)
@@ -135,9 +108,9 @@ func NewPortsReader(r io.Reader) <-chan *models.Port {
 			}
 
 			if id, ok := t.(string); ok {
-				var port models.Port
+				var port pb.Port
 				err = dec.Decode(&port)
-				port.ID = id
+				port.Id = id
 				ch <- &port
 			}
 		}
