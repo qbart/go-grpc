@@ -1,0 +1,19 @@
+version: '3.7'
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: server.Dockerfile
+    ports:
+      - "3001:3001"
+
+  client:
+    build:
+      context: .
+      dockerfile: client.Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      CONFIG_FILE: /app/ports.json
+      PORTS_SERVICE_ADDR: server:3001

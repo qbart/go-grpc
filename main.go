@@ -17,15 +17,21 @@ import (
 )
 
 func main() {
-	conn, err := grpc.Dial("0.0.0.0:3001", grpc.WithInsecure())
+	grpcAddr := envOrDefault("PORTS_SERVICE_ADDR", "0.0.0.0:3001")
+	conn, err := grpc.Dial(grpcAddr, grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("Failed to connect to grpc %v", err)
+		log.Println("Retrying connection to grpc in 2 secs..")
+		time.Sleep(time.Second * 2)
+		conn, err = grpc.Dial(grpcAddr, grpc.WithInsecure())
+		if err != nil {
+			log.Fatalf("Failed to connect to grpc %v", err)
+		}
 	}
 	defer conn.Close()
 	portDomainService := pb.NewPortDomainServiceClient(conn)
 
 	go func() {
-		portsFile, err := os.Open("ports.json")
+		portsFile, err := os.Open(envOrDefault("CONFIG_FILE", "ports.json"))
 		if err != nil {
 			log.Fatalf("Can't open file: %v", err)
 		}
@@ -83,4 +89,12 @@ func main() {
 	defer cancel()
 
 	srv.Shutdown(ctx)
+}
+
+func envOrDefault(env string, defaultValue string) string {
+	value := os.Getenv(env)
+	if value == "" {
+		return defaultValue
+	}
+	return value
 }
