@@ -17,3 +17,5 @@ services:
     environment:
       CONFIG_FILE: /app/ports.json
       PORTS_SERVICE_ADDR: server:3001
+    depends_on:
+      - server
