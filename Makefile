@@ -21,3 +21,16 @@ get:
 .PHONY: get_invalid
 get_invalid:
 	curl -i localhost:3000/ports/AEAJ
+
+.PHONY: lint
+lint:
+	go vet ./...
+	gosec -exclude=G102 ./...
+
+.PHONY: server
+server:
+	go run server/main.go
+
+.PHONY: client
+client:
+	go run client/main.go

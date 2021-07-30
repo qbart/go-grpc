@@ -1,11 +1,11 @@
-package client
+package service
 
 import (
 	"strings"
 	"testing"
 
 	"github.com/franela/goblin"
-	"github.com/qbart/go-grpc/pb"
+	"github.com/qbart/go-grpc/models"
 )
 
 func TestPortsReader(t *testing.T) {
@@ -13,7 +13,7 @@ func TestPortsReader(t *testing.T) {
 
 	g.Describe("#Stream", func() {
 		g.It("Decodes stream correctly", func() {
-			reader := NewPortsReader(strings.NewReader(`
+			reader := strings.NewReader(`
 {
   "AEAJM": {
     "name": "Ajman",
@@ -50,17 +50,18 @@ func TestPortsReader(t *testing.T) {
     "code": "52001"
   }
 }
-	`))
+	`)
 
-			result := make([]*pb.Port, 0)
-			for port := range reader.Stream() {
+			portReader := PortsReader{}
+			result := make([]*models.Port, 0)
+			for port := range portReader.Stream(reader) {
 				result = append(result, port)
 			}
 
 			g.Assert(len(result)).Eql(2)
 
 			ajman := result[0]
-			g.Assert(ajman.Id).Eql("AEAJM")
+			g.Assert(ajman.ID).Eql("AEAJM")
 			g.Assert(ajman.Name).Eql("Ajman")
 			g.Assert(ajman.City).Eql("Ajman")
 			g.Assert(ajman.Country).Eql("United Arab Emirates")
@@ -76,7 +77,7 @@ func TestPortsReader(t *testing.T) {
 			g.Assert(ajman.Code).Eql("52000")
 
 			abu := result[1]
-			g.Assert(abu.Id).Eql("AEAUH")
+			g.Assert(abu.ID).Eql("AEAUH")
 			g.Assert(abu.Name).Eql("Abu Dhabi")
 			g.Assert(abu.City).Eql("Abu Dhabi")
 			g.Assert(abu.Country).Eql("United Arab Emirates")

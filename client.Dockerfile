@@ -9,7 +9,7 @@ RUN go mod download
 COPY . ./
 RUN make install_proto
 RUN make protoc
-RUN go build main.go
+RUN go build client/main.go
 
 FROM alpine:3.14
 WORKDIR /app

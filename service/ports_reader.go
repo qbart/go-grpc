@@ -1,23 +1,19 @@
-package client
+package service
 
 import (
 	"encoding/json"
 	"io"
-	"log"
 
-	"github.com/qbart/go-grpc/pb"
+	"github.com/qbart/go-grpc/models"
+	"go.uber.org/zap"
 )
 
 type PortsReader struct {
-	reader io.Reader
+	Logger *zap.Logger
 }
 
-func NewPortsReader(reader io.Reader) *PortsReader {
-	return &PortsReader{reader: reader}
-}
-
-func (pr *PortsReader) Stream() <-chan *pb.Port {
-	ch := make(chan *pb.Port)
+func (pr *PortsReader) Stream(reader io.Reader) <-chan *models.Port {
+	ch := make(chan *models.Port)
 
 	go func(r io.Reader) {
 		defer close(ch)
@@ -32,18 +28,18 @@ func (pr *PortsReader) Stream() <-chan *pb.Port {
 
 			// everytime we encounter non-delimter we should have a string key that points to the object
 			if id, ok := token.(string); ok {
-				var port pb.Port
+				var port models.Port
 				err := decoder.Decode(&port)
 				if err != nil {
-					log.Println("Error decoding port")
+					pr.Logger.Error("Can't decode Port")
 					break
 				}
-				port.Id = id
+				port.ID = id
 
 				ch <- &port
 			}
 		}
-	}(pr.reader)
+	}(reader)
 
 	return ch
 }

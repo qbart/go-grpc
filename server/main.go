@@ -2,40 +2,54 @@ package main
 
 import (
 	"context"
-	"log"
 	"net"
 
 	"github.com/qbart/go-grpc/pb"
+	"github.com/qbart/go-grpc/serializers"
 	"github.com/qbart/go-grpc/server/storage"
+	"github.com/qbart/go-grpc/server/storage/memory"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
 type portDomainService struct {
 	pb.UnimplementedPortDomainServiceServer
 
-	db storage.DB
+	db     storage.DB
+	logger *zap.Logger
 }
 
 func (s *portDomainService) Upsert(ctx context.Context, port *pb.Port) (*pb.UpsertResponse, error) {
-	log.Println("Upsert", port)
-	err := s.db.Upsert(ctx, port)
+	s.logger.Debug("Upsert", zap.String("PortID", port.Id))
+
+	err := s.db.Upsert(ctx, serializers.DeserializePort(port))
 	return &pb.UpsertResponse{}, err
 }
 
 func (s *portDomainService) Get(ctx context.Context, portId *pb.PortId) (*pb.Port, error) {
-	log.Println("Get", portId)
+	s.logger.Debug("Get", zap.String("PortID", portId.Id))
+
 	port, err := s.db.Get(ctx, portId.Id)
-	return port, err
+	if err != nil {
+		return nil, err
+	}
+	return serializers.SerializePort(port), nil
 }
 
 func main() {
-	db := storage.New()
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
 
-	lis, err := net.Listen("tcp", "0.0.0.0:3001")
+	db := memory.New()
+
+	listener, err := net.Listen("tcp", "0.0.0.0:3001")
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		logger.Fatal("Failed to listen", zap.Error(err))
 	}
 	grpcServer := grpc.NewServer()
-	pb.RegisterPortDomainServiceServer(grpcServer, &portDomainService{db: db})
-	grpcServer.Serve(lis)
+	pb.RegisterPortDomainServiceServer(grpcServer, &portDomainService{db: db, logger: logger})
+	err = grpcServer.Serve(listener)
+	if err != nil {
+		logger.Fatal("GRPC server error", zap.Error(err))
+	}
 }
