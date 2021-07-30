@@ -11,6 +11,9 @@ import (
 	"go.uber.org/zap"
 )
 
+// PortsSyncronizer is responsible for reading the json file with Ports
+// and then sending them to PortDomainService client.
+//
 type PortsSyncronizer struct {
 	Logger            *zap.Logger
 	ConfigFileName    string

@@ -8,6 +8,9 @@ import (
 	"go.uber.org/zap"
 )
 
+// PortsReader decodes json file with ports,
+// then each decoded Port is sent via channel
+//
 type PortsReader struct {
 	Logger *zap.Logger
 }

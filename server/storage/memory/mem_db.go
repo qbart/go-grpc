@@ -9,6 +9,7 @@ import (
 	"github.com/qbart/go-grpc/server/storage"
 )
 
+// memDB is a dummy in-memory database implementation.
 type memDB struct {
 	ports map[string]*models.Port
 	mu    sync.RWMutex
